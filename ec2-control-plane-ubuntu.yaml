@@ -1,0 +1,94 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Generator: "former2"
+Description: ""
+Resources:
+    EC2Instance:
+        Type: "AWS::EC2::Instance"
+        Properties:
+            ImageId: "ami-0cb91c7de36eed2cb"
+            InstanceType: "t2.medium"
+            KeyName: "thunt-keypair"
+            AvailabilityZone: !Sub "${AWS::Region}a"
+            Tenancy: "default"
+            SubnetId: "subnet-d1dec4b9"
+            EbsOptimized: false
+            SecurityGroupIds: 
+              - !Ref EC2SecurityGroup
+            SourceDestCheck: true
+            BlockDeviceMappings: 
+              - 
+                DeviceName: "/dev/sda1"
+                Ebs: 
+                    Encrypted: false
+                    VolumeSize: 12
+                    SnapshotId: "snap-0f7d22fe26267cbc5"
+                    VolumeType: "gp2"
+                    DeleteOnTermination: true
+            IamInstanceProfile: !Ref IAMRole
+            Tags: 
+              - 
+                Key: "Name"
+                Value: "control-plane"
+              - 
+                Key: "OS"
+                Value: "ubuntu"
+            HibernationOptions: 
+                Configured: false
+            EnclaveOptions: 
+                Enabled: false
+
+    EC2SecurityGroup:
+        Type: "AWS::EC2::SecurityGroup"
+        Properties:
+            GroupDescription: "Allow K8s control plane ports and protocols"
+            GroupName: "control-plane-sg"
+            VpcId: "vpc-7eff0d15"
+            SecurityGroupIngress: 
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 10250
+                IpProtocol: "tcp"
+                ToPort: 10259
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 6783
+                IpProtocol: "udp"
+                ToPort: 6784
+              - 
+                CidrIp: "0.0.0.0/0"
+                Description: "K8s API Server"
+                FromPort: 6443
+                IpProtocol: "tcp"
+                ToPort: 6443
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 2379
+                IpProtocol: "tcp"
+                ToPort: 2380
+              - 
+                CidrIp: "0.0.0.0/0"
+                FromPort: 22
+                IpProtocol: "tcp"
+                ToPort: 22
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 6783
+                IpProtocol: "tcp"
+                ToPort: 6783
+            SecurityGroupEgress: 
+              - 
+                CidrIp: "0.0.0.0/0"
+                IpProtocol: "-1"
+
+    IAMRole:
+        Type: "AWS::IAM::Role"
+        Properties:
+            Path: "/"
+            RoleName: "K8sControlPlaneEC2Profile"
+            AssumeRolePolicyDocument: "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"Service\":\"ec2.amazonaws.com\"},\"Action\":\"sts:AssumeRole\"}]}"
+            MaxSessionDuration: 3600
+            ManagedPolicyArns: 
+              - "arn:aws:iam::aws:policy/AdministratorAccess"
+            Description: "Allows EC2 instances to call AWS services on your behalf."
+

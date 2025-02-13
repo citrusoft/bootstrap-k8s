@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Generator: "former2"
+Description: ""
+Resources:
+    EC2SecurityGroup:
+        Type: "AWS::EC2::SecurityGroup"
+        Properties:
+            GroupDescription: "SG for worker nodes"
+            GroupName: "worker-sg"
+            VpcId: "vpc-7eff0d15"
+            SecurityGroupIngress: 
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 6783
+                IpProtocol: "udp"
+                ToPort: 6784
+              - 
+                CidrIp: "0.0.0.0/0"
+                FromPort: 30000
+                IpProtocol: "tcp"
+                ToPort: 32767
+              - 
+                CidrIp: "0.0.0.0/0"
+                FromPort: 22
+                IpProtocol: "tcp"
+                ToPort: 22
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 6783
+                IpProtocol: "tcp"
+                ToPort: 6783
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 10250
+                IpProtocol: "tcp"
+                ToPort: 10250
+            SecurityGroupEgress: 
+              - 
+                CidrIp: "0.0.0.0/0"
+                IpProtocol: "-1"
+
+    EC2Instance:
+        Type: "AWS::EC2::Instance"
+        Properties:
+            ImageId: "ami-0cb91c7de36eed2cb"
+            InstanceType: "t2.micro"
+            KeyName: "thunt-keypair"
+            AvailabilityZone: !Sub "${AWS::Region}a"
+            Tenancy: "default"
+            SubnetId: "subnet-d1dec4b9"
+            EbsOptimized: false
+            SecurityGroupIds: 
+              - !Ref EC2SecurityGroup
+            SourceDestCheck: true
+            BlockDeviceMappings: 
+              - 
+                DeviceName: "/dev/sda1"
+                Ebs: 
+                    Encrypted: false
+                    VolumeSize: 8
+                    SnapshotId: "snap-0f7d22fe26267cbc5"
+                    VolumeType: "gp3"
+                    DeleteOnTermination: true
+            IamInstanceProfile: "JenkinsRole"
+            Tags: 
+              - 
+                Key: "Name"
+                Value: "worker-1"
+            HibernationOptions: 
+                Configured: false
+            EnclaveOptions: 
+                Enabled: false
+
