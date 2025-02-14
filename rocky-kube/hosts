@@ -1,0 +1,5 @@
+[masters]
+k8s-control-plane ansible_host=18.221.233.211 ansbile_user=rocky
+[workers]
+k8s-worker1 ansible_host=3.143.247.31 ansbile_user=rocky
+k8s-worker2 ansible_host=3.131.38.13 ansbile_user=rocky

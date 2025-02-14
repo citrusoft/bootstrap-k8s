@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Metadata:
+    Generator: "former2"
+Description: ""
+Resources:
+    EC2Instance:
+        Type: "AWS::EC2::Instance"
+        Properties:
+            ImageId: "ami-05150ea4d8a533099" # Rocky Linux 9
+            InstanceType: "t3.medium"
+            IamInstanceProfile: !Ref InstanceProfile
+            KeyName: "tahunt"
+            AvailabilityZone: !Sub "${AWS::Region}a"
+            NetworkInterfaces:
+              - AssociatePublicIpAddress: true
+                SubnetId: "subnet-d1dec4b9"
+                DeviceIndex: 0
+                GroupSet:
+                  - !Ref EC2SecurityGroup
+            Tags: 
+              - 
+                Key: "Name"
+                Value: !Sub ${AWS::StackName}
+              - 
+                Key: "OS"
+                Value: "rocky"
+            UserData:
+              Fn::Base64: !Sub |
+                #!/bin/bash
+                yum update -y
+                yum install -y https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/linux_amd64/amazon-ssm-agent.rpm
+                systemctl enable amazon-ssm-agent
+                systemctl start amazon-ssm-agent
+                systemctl status amazon-ssm-agent
+                echo "<h1>Welcome to ${AWS::StackName} EC2</h1>" > /var/www/html/index.html
+
+    EC2SecurityGroup:
+        Type: "AWS::EC2::SecurityGroup"
+        Properties:
+            GroupDescription: "Allow K8s control plane ports and protocols"
+            GroupName: !Sub ${AWS::StackName}-sg
+            VpcId: "vpc-7eff0d15"
+            SecurityGroupIngress: 
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 10250
+                IpProtocol: "tcp"
+                ToPort: 10259
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 6783
+                IpProtocol: "udp"
+                ToPort: 6784
+              - 
+                CidrIp: "0.0.0.0/0"
+                Description: "K8s API Server"
+                FromPort: 6443
+                IpProtocol: "tcp"
+                ToPort: 6443
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 2379
+                IpProtocol: "tcp"
+                ToPort: 2380
+              - 
+                CidrIp: "0.0.0.0/0"
+                FromPort: 22
+                IpProtocol: "tcp"
+                ToPort: 22
+              - 
+                CidrIp: "172.31.0.0/16"
+                FromPort: 6783
+                IpProtocol: "tcp"
+                ToPort: 6783
+            SecurityGroupEgress: 
+              - 
+                CidrIp: "0.0.0.0/0"
+                IpProtocol: "-1"
+
+    # EC2 service role
+    InstanceRole:
+      Type: AWS::IAM::Role
+      Properties:
+        RoleName: !Sub ${AWS::StackName}-role
+        AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal:
+                Service: ec2.amazonaws.com
+              Action: sts:AssumeRole
+        ManagedPolicyArns:
+          - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+          - arn:aws:iam::aws:policy/AdministratorAccess
+        Description: "Allows EC2 instances to call AWS services; allow SSM access."
+
+    # SSM Profile
+    InstanceProfile:
+      Type: AWS::IAM::InstanceProfile
+      Properties:
+        InstanceProfileName: !Sub ${AWS::StackName}-instance-profile
+        Roles:
+          - !Ref InstanceRole
